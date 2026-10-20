@@ -1,9 +1,9 @@
 import { lazy, Suspense, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { collection, getDocs } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 import Prize from './prize.jsx'
 import { getFirestoreDb } from './firebase.js'
-import { normalizePhoneNumber } from './userCsv.js'
+import { getFirestoreUserByDocumentId } from './firestoreUsers.js'
 
 const Admin = lazy(() => import('./admin.jsx'))
 
@@ -17,7 +17,6 @@ function Home() {
   async function handleSubmit(event) {
     event.preventDefault()
     const submittedPhone = phoneNumber.trim()
-    const normalizedPhone = normalizePhoneNumber(submittedPhone)
 
     setSearchedPhone(submittedPhone)
     setLookupResult(null)
@@ -25,18 +24,15 @@ function Home() {
     setIsLookingUp(true)
 
     try {
-      const snapshot = await getDocs(collection(getFirestoreDb(), 'users'))
-      const user = snapshot.docs
-        .map((userDocument) => userDocument.data())
-        .find(
-          (record) =>
-            normalizePhoneNumber(record.mobileNumber ?? record.phoneNumber ?? '') ===
-            normalizedPhone,
-        )
+      const db = getFirestoreDb()
+      const user = await getFirestoreUserByDocumentId(db, submittedPhone)
+      if (user) {
+        await updateDoc(doc(db, 'users', user.id), { checkedIn: 'YES' })
+      }
       setLookupResult(user ?? false)
     } catch (error) {
-      console.error('Could not look up guest in Firestore:', error)
-      setLookupError('Unable to load guest details. Please try again.')
+      console.error('Could not look up or check in guest in Firestore:', error)
+      setLookupError('Unable to load or update guest details. Please try again.')
     } finally {
       setIsLookingUp(false)
     }
@@ -46,8 +42,8 @@ function Home() {
     <main className="cover">
       {lookupResult === null && (
         <section className="table-lookup" aria-labelledby="lookup-title">
-          <h1 id="lookup-title">Find Your Table</h1>
-          <p>Enter your phone number to view your table details.</p>
+          <h1 id="lookup-title">Guest Check-In</h1>
+          <p>Enter your phone number to check in and view your table detail.</p>
           <form className="lookup-form" onSubmit={handleSubmit}>
             <label htmlFor="phone-number">Phone number</label>
             <input
@@ -87,7 +83,7 @@ function Home() {
                 <h2 className="guest-name table-welcome">
                   Welcome to Alliance Bank
                   <br />
-                  Sales Convention Gala Dinner 2026.
+                  GBTB & GCIB Gala Dinner
                 </h2>
                 <p className="table-number-label">Your table number</p>
                 <h2 id="result-title" className="table-number table-welcome">
@@ -95,9 +91,9 @@ function Home() {
                 </h2>
               </>
             ) : (
-              <h2 id="result-title">User not found, please try again.</h2>
+              <h2 id="result-title">We couldn’t find your details just yet. Please check your number and try again.</h2>
             )}
-            <br/><br/>
+
             <button
               className="result-close"
               type="button"

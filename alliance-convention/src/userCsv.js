@@ -68,6 +68,13 @@ export function parseUsersCsv(csv) {
 }
 
 export function normalizePhoneNumber(phoneNumber) {
-  const digits = phoneNumber.replace(/\D/g, '')
+  const digits = String(phoneNumber ?? '').replace(/\D/g, '')
   return digits.startsWith('60') ? `0${digits.slice(2)}` : digits
+}
+
+export function formatMobileNumber(phoneNumber) {
+  const normalizedPhoneNumber = normalizePhoneNumber(phoneNumber)
+  if (!/^01\d{8,9}$/.test(normalizedPhoneNumber)) return ''
+
+  return `${normalizedPhoneNumber.slice(0, 3)}-${normalizedPhoneNumber.slice(3)}`
 }

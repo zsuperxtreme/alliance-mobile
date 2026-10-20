@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { collection, getDocs } from 'firebase/firestore'
 import tngLogo from './assets/TnGLogo.png'
 import { getFirestoreDb } from './firebase.js'
-import { normalizePhoneNumber } from './userCsv.js'
+import { getFirestoreUserByDocumentId } from './firestoreUsers.js'
+
+function normalizeTngType(value) {
+  return String(value ?? '').replace(/[^a-z\d]/gi, '').toUpperCase()
+}
 
 function Prize() {
   const [searchParams] = useSearchParams()
@@ -20,7 +23,6 @@ function Prize() {
   async function handleSubmit(event) {
     event.preventDefault()
     const submittedPhone = phoneNumber.trim()
-    const normalizedPhone = normalizePhoneNumber(submittedPhone)
 
     setSearchedPhone(submittedPhone)
     setLookupResult(null)
@@ -28,16 +30,10 @@ function Prize() {
     setIsLookingUp(true)
 
     try {
-      const snapshot = await getDocs(collection(getFirestoreDb(), 'users'))
-      const user = snapshot.docs
-        .map((userDocument) => userDocument.data())
-        .find(
-          (record) =>
-            normalizePhoneNumber(record.mobileNumber ?? record.phoneNumber ?? '') ===
-              normalizedPhone &&
-            String(record.tng ?? '').trim().toUpperCase() === tngType.toUpperCase(),
-        )
-      setLookupResult(user ?? false)
+      const user = await getFirestoreUserByDocumentId(getFirestoreDb(), submittedPhone)
+      setLookupResult(
+        user && normalizeTngType(user.tng) === normalizeTngType(tngType) ? user : false,
+      )
     } catch (error) {
       console.error('Could not look up prize in Firestore:', error)
       setLookupError('Unable to load prize details. Please try again.')
@@ -54,7 +50,7 @@ function Prize() {
           aria-labelledby="prize-lookup-title"
         >
           <img className="tng-logo" src={tngLogo} alt="Touch 'n Go" />
-          <h1 id="prize-lookup-title">Feeling lucky? Your {tngType} TnG prize awaits!</h1><br/><br/>
+          <h1 id="prize-lookup-title">Feeling lucky? Your {tngType} TnG prize awaits!</h1>
           <form className="lookup-form" onSubmit={handleSubmit}>
             <label htmlFor="prize-phone-number">Phone number</label>
             <input
@@ -105,7 +101,6 @@ function Prize() {
                 <span className="result-label">The prize is playing hide-and-seek!</span>
                 <h2 id="prize-result-title">
                   No {tngType} TnG prize this time.
-                  <br />
                   Keep smiling and try again!
                 </h2>
               </>

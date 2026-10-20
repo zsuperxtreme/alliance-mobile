@@ -12,6 +12,7 @@ body {
 }
 
 .cover {
+  --lookup-top-offset: calc(clamp(300px, 75vw, 820px) + 10vh);
   display: flow-root;
   min-height: 100vh;
   min-height: 100svh;
@@ -22,7 +23,7 @@ body {
 .table-lookup {
   box-sizing: border-box;
   width: min(440px, calc(100% - 32px));
-  margin: calc(clamp(300px, 75vw, 820px) + 10vh) auto 32px;
+  margin: var(--lookup-top-offset) auto 32px;
   padding: 24px;
   text-align: center;
   border: 1px solid rgba(16, 45, 82, 0.12);
@@ -45,7 +46,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .table-lookup {
+  .table-lookup,
+  .result-overlay .table-result {
     animation: none;
   }
 }
@@ -69,6 +71,7 @@ body {
 
 .tng-lookup h1 {
   color: #fff;
+  font-size: 22px;
 }
 
 .tng-lookup > p {
@@ -77,9 +80,11 @@ body {
 
 .tng-logo {
   display: block;
+  box-sizing: border-box;
   width: 120px;
   height: auto;
   margin: 0 auto 18px;
+  border: 2px solid #fff;
   border-radius: 10px;
 }
 
@@ -157,58 +162,53 @@ body {
 }
 
 .result-overlay {
-  position: fixed;
+  box-sizing: border-box;
+  position: relative;
   z-index: 10;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(255, 255, 255, 0.45);
+  min-height: 100svh;
+  padding: 0 16px;
+  background: transparent;
+}
+
+.result-overlay .table-result {
+  display: flex;
+  box-sizing: border-box;
+  width: min(440px, 100%);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 20px;
+  margin: var(--lookup-top-offset) auto 32px;
+  animation: fly-in-from-bottom 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .table-result {
   box-sizing: border-box;
-  width: min(360px, 100%);
-  padding: 18px;
+  width: min(440px, calc(100% - 32px));
+  padding: 24px;
   text-align: center;
-  border: 1px solid #e5c878;
-  border-radius: 14px;
-  background: #fffaf0;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(16, 45, 82, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #102d52;
+  box-shadow: 0 12px 36px rgba(16, 45, 82, 0.2);
 }
 
-.table-result.tng-prize-result {
-  border-color: #414995;
-  background: #292d70;
-  color: #fff;
-  box-shadow: 0 16px 48px rgba(20, 25, 88, 0.38);
-  transform: translateY(30%);
-}
-
+.table-result.tng-prize-result,
 .table-result.tng-fail-result {
   border-color: #414995;
   background: #292d70;
   color: #fff;
-  box-shadow: 0 16px 48px rgba(20, 25, 88, 0.38);
-  transform: translateY(30%);
+  box-shadow: 0 12px 36px rgba(20, 25, 88, 0.3);
 }
 
-.tng-prize-result .tng-logo {
-  width: 112px;
-  margin-bottom: 16px;
-}
-
+.tng-prize-result .tng-logo,
 .tng-fail-result .tng-logo {
   width: 112px;
   margin-bottom: 16px;
 }
 
-.tng-prize-result .result-label {
-  display: block;
-  color: #fff000;
-  font-size: 14px;
-}
-
+.tng-prize-result .result-label,
 .tng-fail-result .result-label {
   display: block;
   color: #fff000;
@@ -222,8 +222,8 @@ body {
   line-height: 1.4;
 }
 
-.tng-prize-result .guest-name {
-  color: #e4e6ff;
+.table-result.tng-prize-result .guest-name {
+  color: #fff;
 }
 
 .table-result.tng-prize-result .table-number {
@@ -252,21 +252,14 @@ body {
   overflow-wrap: anywhere;
 }
 
-.tng-prize-result .result-close {
+.table-result.tng-prize-result .result-close,
+.table-result.tng-fail-result .result-close {
   background: #fff000;
   color: #292d70;
 }
 
-.tng-fail-result .result-close {
-  background: #fff000;
-  color: #292d70;
-}
-
-.tng-prize-result .result-close:hover {
-  background: #ffe600;
-}
-
-.tng-fail-result .result-close:hover {
+.table-result.tng-prize-result .result-close:hover,
+.table-result.tng-fail-result .result-close:hover {
   background: #ffe600;
 }
 
@@ -332,18 +325,13 @@ body {
 }
 
 .table-result.not-found {
-  border-color: #e7b7b7;
-  background: #fff5f5;
-  transform: translateY(40%);
-}
-
-.table-result:not(.not-found):not(.tng-prize-result):not(.tng-fail-result) {
-  transform: translateY(30%);
+  border-color: rgba(16, 45, 82, 0.12);
+  background: rgba(255, 255, 255, 0.96);
 }
 
 .table-result.not-found h2 {
   margin: 6px 0 12px;
-  color: #9b2c2c;
+  color: #102d52;
   font-size: 20px;
 }
 
@@ -483,6 +471,22 @@ body {
   padding: 10px 12px;
   border-top: 1px solid #e5eaf0;
   white-space: nowrap;
+}
+
+.admin-table th:first-child,
+.admin-table td:first-child {
+  width: 80px;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-table th:nth-child(2),
+.admin-table td:nth-child(2) {
+  width: 150px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-table th {

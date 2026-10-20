@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import { collection, doc, getDocs, writeBatch } from 'firebase/firestore'
 import { getFirestoreDb } from './firebase.js'
-import { normalizePhoneNumber, parseUsersCsv } from './userCsv.js'
+import { formatMobileNumber, parseUsersCsv } from './userCsv.js'
 
 function getCompleteUsers(users) {
-  const completeUsers = users.filter(
-    (user) =>
-      user.name.trim() &&
-      user.mobileNumber.trim() &&
-      user.tableNumber.trim() &&
-      normalizePhoneNumber(user.mobileNumber),
-  )
+  const completeUsers = users.flatMap((user) => {
+    const mobileNumber = formatMobileNumber(user.mobileNumber)
+    if (!user.name.trim() || !mobileNumber || !user.tableNumber.trim()) return []
+
+    return [{ ...user, mobileNumber }]
+  })
 
   return completeUsers
 }
@@ -157,14 +156,16 @@ function Admin() {
         const batchUsers = users.slice(offset, offset + 500)
 
         for (const user of batchUsers) {
-          batch.set(doc(usersCollection), user)
+          batch.set(doc(usersCollection, user.mobileNumber.trim()), user)
         }
 
         await batch.commit()
         uploadedCount += batchUsers.length
       }
 
-      setStatus(`Added ${uploadedCount} users to Firestore with new document IDs.`)
+      setStatus(
+        `Saved ${uploadedCount} users to Firestore using their phone numbers as document IDs.`,
+      )
       await refreshFirestoreUsers()
     } catch (uploadError) {
       console.error('Could not upload users to Firestore:', uploadError)
@@ -262,8 +263,10 @@ function Admin() {
           {users && (
             <p className="admin-file-summary">
               {fileName}: {users.length} complete user{users.length === 1 ? '' : 's'} ready to
-              upload; {skippedCount} incomplete row{skippedCount === 1 ? '' : 's'} will be ignored.
-              {users.length > 0 && ' Each uploaded user will get a new Firestore document.'}
+              upload; {skippedCount} row{skippedCount === 1 ? '' : 's'} will be ignored because
+              required details are missing or the phone number format is invalid.
+              {users.length > 0 &&
+                ' Each user will be saved with their phone number as the Firestore document ID.'}
             </p>
           )}
           <button type="submit" disabled={!users?.length || isUploading}>

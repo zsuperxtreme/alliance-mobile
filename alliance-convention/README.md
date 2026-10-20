@@ -17,12 +17,13 @@ Open `/admin` and select a CSV with the `Staff No`, `Name`, `Mobile Number`,
 `Table Number`, `TnG`, `Redeem Code`, `Eligible`, and `Checked In` columns.
 The importer also accepts the legacy `No` and `Prize` headers. These values are
 saved as `staffNo`, `name`, `mobileNumber`, `tableNumber`, `tng`, `redeemCode`,
-`eligible`, and `checkedIn` fields in Firestore; `staffNo` is not used as the
-document ID. Firestore assigns each uploaded record a random document ID.
-Re-uploading a CSV adds new documents rather than updating existing records,
-and records are not deleted.
-Rows with a missing mobile number or any other blank parsed value are skipped;
-the upload summary shows how many rows were ignored.
+`eligible`, and `checkedIn` fields in Firestore. Malaysian mobile numbers are
+normalized to `012-3456789` or `012-34567890`; that formatted value is saved in
+`mobileNumber` and used as the Firestore document ID. Re-uploading a CSV with
+the same phone number updates that document rather than creating a duplicate,
+and records not present in the CSV are not deleted.
+Rows with a missing required value or an invalid mobile number are skipped; the
+upload summary shows how many rows were ignored.
 
 Set `VITE_FIREBASE_API_KEY` in the app's environment before running or building.
 The project ID defaults to `alliance-convention`; set `VITE_FIREBASE_PROJECT_ID`
