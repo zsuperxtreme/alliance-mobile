@@ -1,70 +1,11 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import Tng1 from './Tng1.jsx'
-import Tng2 from './Tng2.jsx'
-import Tng3 from './Tng3.jsx'
-import Tng4 from './Tng4.jsx'
+import { collection, getDocs } from 'firebase/firestore'
+import Prize from './prize.jsx'
+import { getFirestoreDb } from './firebase.js'
+import { normalizePhoneNumber } from './userCsv.js'
 
-function parseCsv(csv) {
-  const rows = []
-  let row = []
-  let field = ''
-  let insideQuotes = false
-
-  for (let index = 0; index < csv.length; index += 1) {
-    const character = csv[index]
-
-    if (character === '"') {
-      if (insideQuotes && csv[index + 1] === '"') {
-        field += '"'
-        index += 1
-      } else {
-        insideQuotes = !insideQuotes
-      }
-    } else if (character === ',' && !insideQuotes) {
-      row.push(field.trim())
-      field = ''
-    } else if ((character === '\n' || character === '\r') && !insideQuotes) {
-      row.push(field.trim())
-      if (row.some((value) => value)) rows.push(row)
-      row = []
-      field = ''
-      if (character === '\r' && csv[index + 1] === '\n') index += 1
-    } else {
-      field += character
-    }
-  }
-
-  row.push(field.trim())
-  if (row.some((value) => value)) rows.push(row)
-
-  const [headers, ...records] = rows
-  if (!headers) {
-    throw new Error('The user CSV is empty or missing its header row.')
-  }
-
-  const headerIndexes = Object.fromEntries(
-    headers.map((header, index) => [header.replace(/^\uFEFF/, '').toLowerCase(), index]),
-  )
-  const nameIndex = headerIndexes.name
-  const phoneIndex = headerIndexes['mobile number']
-  const tableIndex = headerIndexes['table number']
-
-  if (nameIndex === undefined || phoneIndex === undefined || tableIndex === undefined) {
-    throw new Error('The user CSV must contain Name, Mobile Number, and Table Number columns.')
-  }
-
-  return records.map((record) => ({
-    name: record[nameIndex] ?? '',
-    phoneNumber: record[phoneIndex] ?? '',
-    tableNumber: record[tableIndex] ?? '',
-  }))
-}
-
-function normalizePhoneNumber(phoneNumber) {
-  const digits = phoneNumber.replace(/\D/g, '')
-  return digits.startsWith('60') ? `0${digits.slice(2)}` : digits
-}
+const Admin = lazy(() => import('./admin.jsx'))
 
 function Home() {
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -84,19 +25,18 @@ function Home() {
     setIsLookingUp(true)
 
     try {
-      const response = await fetch('/user.csv', { cache: 'no-store' })
-      if (!response.ok) {
-        throw new Error(`Failed to load guest list (${response.status}).`)
-      }
-
-      const users = parseCsv(await response.text())
-      const user = users.find(
-        (record) => normalizePhoneNumber(record.phoneNumber) === normalizedPhone,
-      )
+      const snapshot = await getDocs(collection(getFirestoreDb(), 'users'))
+      const user = snapshot.docs
+        .map((userDocument) => userDocument.data())
+        .find(
+          (record) =>
+            normalizePhoneNumber(record.mobileNumber ?? record.phoneNumber ?? '') ===
+            normalizedPhone,
+        )
       setLookupResult(user ?? false)
     } catch (error) {
-      console.error('Could not look up guest:', error)
-      setLookupError('Unable to load the guest list. Please try again.')
+      console.error('Could not look up guest in Firestore:', error)
+      setLookupError('Unable to load guest details. Please try again.')
     } finally {
       setIsLookingUp(false)
     }
@@ -144,15 +84,20 @@ function Home() {
           >
             {lookupResult ? (
               <>
-                <span className="result-label">Guest found</span>
-                <p className="guest-name">{lookupResult.name}</p>
-                <h2 id="result-title" className="table-number">
-                  Table {lookupResult.tableNumber}
+                <h2 className="guest-name table-welcome">
+                  Welcome to Alliance Bank
+                  <br />
+                  Sales Convention Gala Dinner 2026.
+                </h2>
+                <p className="table-number-label">Your table number</p>
+                <h2 id="result-title" className="table-number table-welcome">
+                  {lookupResult.tableNumber}
                 </h2>
               </>
             ) : (
               <h2 id="result-title">User not found, please try again.</h2>
             )}
+            <br/><br/>
             <button
               className="result-close"
               type="button"
@@ -171,10 +116,15 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/tng1" element={<Tng1 />} />
-      <Route path="/tng2" element={<Tng2 />} />
-      <Route path="/tng3" element={<Tng3 />} />
-      <Route path="/tng4" element={<Tng4 />} />
+      <Route path="/prize" element={<Prize />} />
+      <Route
+        path="/admin"
+        element={
+          <Suspense fallback={<p>Loading admin…</p>}>
+            <Admin />
+          </Suspense>
+        }
+      />
     </Routes>
   )
 }

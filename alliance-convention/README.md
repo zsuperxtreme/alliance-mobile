@@ -11,6 +11,31 @@ Currently, two official plugins are available:
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
+## Uploading users to Firestore
+
+Open `/admin` and select a CSV with the `Staff No`, `Name`, `Mobile Number`,
+`Table Number`, `TnG`, `Redeem Code`, `Eligible`, and `Checked In` columns.
+The importer also accepts the legacy `No` and `Prize` headers. These values are
+saved as `staffNo`, `name`, `mobileNumber`, `tableNumber`, `tng`, `redeemCode`,
+`eligible`, and `checkedIn` fields in Firestore; `staffNo` is not used as the
+document ID. Firestore assigns each uploaded record a random document ID.
+Re-uploading a CSV adds new documents rather than updating existing records,
+and records are not deleted.
+Rows with a missing mobile number or any other blank parsed value are skipped;
+the upload summary shows how many rows were ignored.
+
+Set `VITE_FIREBASE_API_KEY` in the app's environment before running or building.
+The project ID defaults to `alliance-convention`; set `VITE_FIREBASE_PROJECT_ID`
+to override it. Optionally set `VITE_FIREBASE_AUTH_DOMAIN`. Use the Firebase web
+app configuration from the Firebase console.
+
+The `/admin` route is not an authentication boundary. Restrict Firestore writes
+with Firebase Authentication and Firestore security rules before deploying this
+upload feature.
+The admin page can permanently delete every document in the Firestore `users`
+collection after confirmation, or download the current collection as
+`firestore-users.csv`.
+
 ## Expanding the Oxlint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
